@@ -28,7 +28,7 @@ def enviar_email_zrc(tabela_html, periodo_str):
         <p>Qualquer dúvida, estou à disposição.</p>
         <br>
         
-        <p style="margin: 0; font-size: 11pt; color: black;"><b style="font-size: 12pt;">{config.ASSINATURA_NOME}</b><br>{config.ASSINATURA_CARGO}</p>
+        <p style="margin: 0; font-size: 11pt; color: black;"><b style="font-size: 12pt;">{config.ASSINATURA_NOME}</b></p>
         <hr size="1" width="250" align="left" color="#333333">
         <p style="margin: 0; font-size: 11pt; color: black;"><a href="mailto:{config.ASSINATURA_EMAIL}" style="color: #007bff; text-decoration: none;">{config.ASSINATURA_EMAIL}</a><br>{config.ASSINATURA_TELEFONE1} | {config.ASSINATURA_TELEFONE2}<br><a href="http://{config.ASSINATURA_SITE}" style="color: #007bff; text-decoration: none;">{config.ASSINATURA_SITE}</a></p>
         <p style="margin-top: 10px;"><img src="cid:logo_mosten" height="50">&nbsp;&nbsp;<img src="cid:logo_selos" height="50"></p>
@@ -63,8 +63,9 @@ def enviar_email_status(timing_report, status, erro_msg=""):
 
     msg = MIMEMultipart()
     
-    status_cor = "green" if status_final == "SUCESSO" else "red"
-    msg['Subject'] = f"Status do Robô ZRC: {status_final}"
+    # --- CORREÇÃO APLICADA AQUI: 'status_final' trocado por 'status' ---
+    status_cor = "green" if status == "SUCESSO" else "red"
+    msg['Subject'] = f"Status do Robô ZRC: {status}"
     msg['From'] = f"Robô ZRC <{config.EMAIL_REMETENTE}>"
     msg['To'] = config.STATUS_EMAIL_DESTINATARIO
 
@@ -75,7 +76,7 @@ def enviar_email_status(timing_report, status, erro_msg=""):
     corpo_html = f"""
     <html><head></head><body style="font-family: Calibri, sans-serif; font-size: 11pt;">
         <h2>Relatório de Execução do Robô ZRC</h2>
-        <p><b>Status Final:</b> <span style="color: {status_cor}; font-weight: bold;">{status_final}</span></p>
+        <p><b>Status Final:</b> <span style="color: {status_cor}; font-weight: bold;">{status}</span></p>
         <p><b>Data e Hora:</b> {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}</p>
         <h3>Tempos de Execução por Etapa:</h3>
         <table style="width: 600px; border-collapse: collapse;">
@@ -86,7 +87,7 @@ def enviar_email_status(timing_report, status, erro_msg=""):
         </table>
     """
 
-    if status_final == "FALHA":
+    if status == "FALHA":
         corpo_html += f"""<h3 style="color: red;">Detalhes do Erro:</h3><p style="font-family: 'Courier New', monospace; background-color: #f5f5f5; padding: 10px;">{erro_msg}</p>"""
 
     corpo_html += "</body></html>"

@@ -19,9 +19,9 @@ def processar_planilha(caminho_arquivo):
             return None
 
         # Aplica os filtros de situação e comentários
-        df_filtrado = df_filtrado[df_filtrado['Situação'] == 'Aprovado'].copy()
-        df_filtrado['Comentários'] = df_filtrado['Comentários'].astype(str)
-        df_filtrado = df_filtrado[df_filtrado['Comentários'].str.len() >= 5]
+        #df_filtrado = df_filtrado[df_filtrado['Situação'] == 'Aprovado'].copy()
+        #df_filtrado['Comentários'] = df_filtrado['Comentários'].astype(str)
+        #df_filtrado = df_filtrado[df_filtrado['Comentários'].str.len() >= 5]
         
         print("Planilha do projeto ZRC processada com sucesso.")
         return df_filtrado
