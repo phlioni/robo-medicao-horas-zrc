@@ -1,0 +1,5 @@
+pandas
+openpyxl
+selenium
+pywin32
+python-dateutil
