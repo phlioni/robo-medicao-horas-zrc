@@ -3,12 +3,14 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
+from email.mime.application import MIMEApplication
 from datetime import datetime
+import os
 
 import config
 
-def enviar_email_zrc(tabela_html, periodo_str):
-    """Monta e envia o e-mail específico para o projeto ZRC."""
+def enviar_email_zrc(tabela_html, periodo_str, anexos=None):
+    """Monta e envia o e-mail específico para o projeto ZRC, com anexos."""
     print("Preparando e-mail para o projeto ZRC...")
 
     msg = MIMEMultipart('related')
@@ -23,7 +25,7 @@ def enviar_email_zrc(tabela_html, periodo_str):
     corpo_html = f"""
     <html><head></head><body style="font-family: Calibri, sans-serif; font-size: 11pt;">
         <p>Olá {config.ZRC_DESTINATARIO_PRINCIPAL['nome']},</p>
-        <p>Segue medição de horas para o projeto ZRC, referente ao período de {periodo_str}.</p><br>
+        <p>Segue medição de horas para o projeto ZRC, referente ao período de {periodo_str}. O relatório detalhado por profissional está em anexo.</p><br>
         {tabela_html}<br>
         <p>Qualquer dúvida, estou à disposição.</p>
         <br>
@@ -42,6 +44,17 @@ def enviar_email_zrc(tabela_html, periodo_str):
             img_selos = MIMEImage(f.read()); img_selos.add_header('Content-ID', '<logo_selos>'); msg.attach(img_selos)
     except FileNotFoundError as e:
         print(f"AVISO: Não foi possível encontrar a imagem da assinatura: {e}. O e-mail será enviado sem ela.")
+
+    if anexos:
+        for caminho_anexo in anexos:
+            try:
+                with open(caminho_anexo, "rb") as anexo:
+                    part = MIMEApplication(anexo.read(), Name=os.path.basename(caminho_anexo))
+                    part['Content-Disposition'] = f'attachment; filename="{os.path.basename(caminho_anexo)}"'
+                    msg.attach(part)
+                    print(f" -> Anexado: {os.path.basename(caminho_anexo)}")
+            except Exception as e:
+                print(f"ERRO ao anexar o arquivo {caminho_anexo}: {e}")
 
     try:
         server = smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT)

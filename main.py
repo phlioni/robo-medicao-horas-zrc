@@ -11,8 +11,8 @@ import envio_email
 import excel_handler
 
 def arquivar_relatorio(caminho_arquivo):
-    """Renomeia e move o arquivo final para a pasta de relatórios."""
-    print("Arquivando o relatório final...")
+    """Renomeia e move o arquivo principal baixado para a pasta de relatórios."""
+    print("Arquivando o relatório principal...")
     if not os.path.exists(config.PASTA_RELATORIOS_FINAL):
         os.makedirs(config.PASTA_RELATORIOS_FINAL)
         print(f"Pasta '{config.PASTA_RELATORIOS_FINAL}' criada.")
@@ -45,18 +45,26 @@ def run():
         timing_report["2. Desbloqueio do Arquivo Excel"] = time.time() - start_step_time
         
         start_step_time = time.time()
-        df_processado = processamento_dados.processar_planilha(caminho_arquivo_processado)
+        df_processado, mes_ano_relatorio = processamento_dados.processar_planilha(caminho_arquivo_processado)
         timing_report["3. Processamento (Filtro ZRC)"] = time.time() - start_step_time
         
         if df_processado is not None and not df_processado.empty:
             start_step_time = time.time()
+            relatorios_por_cliente = processamento_dados.gerar_planilhas_por_projeto(df_processado, mes_ano_relatorio)
+            timing_report["4. Geração de Planilha Detalhada"] = time.time() - start_step_time
+            
+            start_step_time = time.time()
             tabela_html_zrc = processamento_dados.criar_tabela_html(df_processado)
-            envio_email.enviar_email_zrc(tabela_html_zrc, periodo_relatorio)
-            timing_report["4. Envio de E-mail ZRC"] = time.time() - start_step_time
+            
+            # Pega a lista de arquivos para o cliente 'ZRC'
+            arquivos_para_anexar = relatorios_por_cliente.get('ZRC', [])
+            
+            envio_email.enviar_email_zrc(tabela_html_zrc, periodo_relatorio, arquivos_para_anexar)
+            timing_report["5. Envio de E-mail ZRC"] = time.time() - start_step_time
 
             start_step_time = time.time()
             arquivar_relatorio(caminho_arquivo_processado)
-            timing_report["5. Arquivamento do Relatório"] = time.time() - start_step_time
+            timing_report["6. Arquivamento do Relatório"] = time.time() - start_step_time
         else:
             print("Nenhum dado para processar para o projeto ZRC após a filtragem.")
             if caminho_arquivo_processado and os.path.exists(caminho_arquivo_processado):
