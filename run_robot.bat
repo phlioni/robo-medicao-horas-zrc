@@ -1,17 +1,18 @@
 @echo off
-rem Este comando garante que o script sempre execute a partir de sua própria pasta.
+:: Navega para o diretório onde este arquivo .bat está localizado
 cd /d "%~dp0"
 
-echo Ativando o ambiente virtual...
-rem Ativa o ambiente virtual (venv).
-call venv\Scripts\activate
+:: Ativa o ambiente virtual (agora o caminho relativo é seguro)
+echo Ativando ambiente virtual...
+call "venv\Scripts\activate.bat"
 
-echo Ambiente ativado. Executando o script Python...
-rem Executa o seu robô. Todo o progresso aparecerá nesta janela.
+:: Executa o script Python
+echo Executando o script Python...
 python main.py
 
-echo Processo finalizado.
+:: Desativa o ambiente virtual
+echo Desativando ambiente virtual...
+call "venv\Scripts\deactivate.bat"
 
-rem Se você quiser que esta janela preta permaneça aberta no final para ler
-rem todas as mensagens, remova o "rem" da linha abaixo.
-rem pause
+echo.
+echo Processo concluido.
