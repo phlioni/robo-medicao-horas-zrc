@@ -16,7 +16,7 @@ import config
 def login_e_download():
     """Orquestra a automação web, com período de datas customizado via digitação."""
     options = webdriver.ChromeOptions()
-    # options.add_argument("--headless")
+    options.add_argument("--headless")
     options.add_argument("--start-maximized")
     driver = webdriver.Chrome(options=options)
     

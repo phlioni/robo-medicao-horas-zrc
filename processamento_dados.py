@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import re
 from openpyxl.styles import Font
+import calendar
 
 def processar_planilha(caminho_arquivo):
     """
@@ -45,26 +46,110 @@ def processar_planilha(caminho_arquivo):
         return None, mes_ano_formatado
 
 def criar_tabela_html(df_zrc):
-    """Cria a tabela HTML detalhada (com profissionais) para o projeto ZRC."""
-    # (Esta função permanece a mesma)
-    grouped = df_zrc.groupby(['Projeto', 'Profissional'])['Horas'].sum().reset_index()
+    """
+    Cria a tabela HTML detalhada para o projeto ZRC, com as horas divididas
+    em dois períodos mensais e uma coluna de total.
+    """
+    if df_zrc is None or df_zrc.empty:
+        return "<p>Não há dados para exibir.</p>"
+
+    # Identificar os meses e anos presentes nos dados
+    df_zrc['MesAno'] = df_zrc['Data'].dt.to_period('M')
+    periodos = sorted(df_zrc['MesAno'].unique())
+
+    # Garantir que temos no máximo 2 períodos para as colunas
+    if len(periodos) == 0:
+        return "<p>Não foi possível determinar o período de datas.</p>"
+        
+    periodo1 = periodos[0]
+    periodo2 = periodos[1] if len(periodos) > 1 else None
+
+    # Agrupar por projeto, profissional e período
+    grouped = df_zrc.groupby(['Projeto', 'Profissional', 'MesAno'])['Horas'].sum().unstack(fill_value=0)
+    
+    # Adicionar coluna de total
+    grouped['Total'] = grouped.sum(axis=1)
+    
+    # Resetar o índice para transformar multi-índice em colunas
+    grouped = grouped.reset_index()
+
+    # Formatação dos nomes dos meses para o cabeçalho
+    meses_pt = {1:"Jan", 2:"Fev", 3:"Mar", 4:"Abr", 5:"Mai", 6:"Jun", 7:"Jul", 8:"Ago", 9:"Set", 10:"Out", 11:"Nov", 12:"Dez"}
+    
+    # Cabeçalho Período 1
+    ultimo_dia_p1 = calendar.monthrange(periodo1.year, periodo1.month)[1]
+    header_p1 = f"15/{periodo1.month:02d} - {ultimo_dia_p1}/{periodo1.month:02d}"
+
+    # Cabeçalho Período 2
+    header_p2 = f"01/{periodo2.month:02d} - 14/{periodo2.month:02d}" if periodo2 else ""
+
+    # Construção do HTML
     html_output = ""
-    total_geral = 0
+    total_geral_p1 = 0
+    total_geral_p2 = 0
+    total_geral_final = 0
+
     projetos = grouped['Projeto'].unique()
     for projeto in projetos:
         df_projeto = grouped[grouped['Projeto'] == projeto]
-        total_projeto = df_projeto['Horas'].sum()
-        total_geral += total_projeto
-        total_projeto_str = f"{total_projeto:,.2f}".replace(',', '#').replace('.', ',').replace('#', '.')
-        html_output += f"""<tr style="background-color: #DDEBF7; font-weight: bold;"><td style="padding: 8px; border: 1px solid #dddddd;">{projeto}</td><td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{total_projeto_str}</td></tr>"""
+        
+        # Totais por projeto
+        total_projeto_p1 = df_projeto[periodo1].sum() if periodo1 in df_projeto else 0
+        total_projeto_p2 = df_projeto[periodo2].sum() if periodo2 and periodo2 in df_projeto else 0
+        total_projeto_final = df_projeto['Total'].sum()
+
+        total_geral_p1 += total_projeto_p1
+        total_geral_p2 += total_projeto_p2
+        total_geral_final += total_projeto_final
+
+        # Função para formatar números
+        def format_num(n):
+            return f"{n:,.2f}".replace(',', '#').replace('.', ',').replace('#', '.')
+
+        # Linha de total do projeto
+        html_output += f"""<tr style="background-color: #DDEBF7; font-weight: bold;">
+                             <td style="padding: 8px; border: 1px solid #dddddd;">{projeto}</td>
+                             <td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{format_num(total_projeto_p1)}</td>"""
+        if periodo2:
+            html_output += f'<td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{format_num(total_projeto_p2)}</td>'
+        html_output += f'<td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{format_num(total_projeto_final)}</td></tr>'
+
+        # Linhas dos profissionais
         for _, row in df_projeto.iterrows():
-            horas_str = f"{row['Horas']:,.2f}".replace(',', '#').replace('.', ',').replace('#', '.')
-            html_output += f"""<tr><td style="padding: 8px; border: 1px solid #dddddd; padding-left: 25px;">{row['Profissional']}</td><td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{horas_str}</td></tr>"""
-    total_geral_str = f"{total_geral:,.2f}".replace(',', '#').replace('.', ',').replace('#', '.')
-    html_final = f"""<table style="width: 600px; border-collapse: collapse; font-family: Calibri, sans-serif; font-size: 11pt;"><thead style="background-color: #4472C4; color: white;"><tr><th style="padding: 8px; border: 1px solid #dddddd; text-align: left;">Rótulos de Linha</th><th style="padding: 8px; border: 1px solid #dddddd; text-align: right;">Soma de Horas</th></tr></thead><tbody>{html_output}</tbody><tfoot><tr style="background-color: #DDEBF7; font-weight: bold;"><td style="padding: 8px; border: 1px solid #dddddd;">Total Geral</td><td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{total_geral_str}</td></tr></tfoot></table>"""
+            horas_p1 = row.get(periodo1, 0)
+            horas_p2 = row.get(periodo2, 0) if periodo2 else 0
+            
+            html_output += f"""<tr>
+                                 <td style="padding: 8px; border: 1px solid #dddddd; padding-left: 25px;">{row['Profissional']}</td>
+                                 <td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{format_num(horas_p1)}</td>"""
+            if periodo2:
+                html_output += f'<td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{format_num(horas_p2)}</td>'
+            html_output += f'<td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{format_num(row["Total"])}</td></tr>'
+
+    # Construção da tabela final com cabeçalhos dinâmicos
+    header_html = f"""<th style="padding: 8px; border: 1px solid #dddddd; text-align: left;">Rótulos de Linha</th>
+                      <th style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{header_p1}</th>"""
+    if periodo2:
+        header_html += f'<th style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{header_p2}</th>'
+    header_html += '<th style="padding: 8px; border: 1px solid #dddddd; text-align: right;">Total de Horas</th>'
+
+    # Rodapé com totais gerais
+    footer_html = f"""<tr style="background-color: #DDEBF7; font-weight: bold;">
+                        <td style="padding: 8px; border: 1px solid #dddddd;">Total Geral</td>
+                        <td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{format_num(total_geral_p1)}</td>"""
+    if periodo2:
+        footer_html += f'<td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{format_num(total_geral_p2)}</td>'
+    footer_html += f'<td style="padding: 8px; border: 1px solid #dddddd; text-align: right;">{format_num(total_geral_final)}</td></tr>'
+    
+    html_final = f"""<table style="width: 800px; border-collapse: collapse; font-family: Calibri, sans-serif; font-size: 11pt;">
+                       <thead style="background-color: #4472C4; color: white;">
+                         <tr>{header_html}</tr>
+                       </thead>
+                       <tbody>{html_output}</tbody>
+                       <tfoot>{footer_html}</tfoot>
+                     </table>"""
     return html_final
 
-# --- (FUNÇÃO ADICIONADA DO OUTRO ROBÔ) ---
 def gerar_planilhas_por_projeto(df_completo, mes_ano_relatorio):
     """
     Cria um arquivo Excel para cada projeto, contendo abas para cada profissional
